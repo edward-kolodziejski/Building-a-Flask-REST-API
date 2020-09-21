@@ -1,5 +1,6 @@
 from flask import Flask
-from flask_restful import Api, Resource, reqparse, abortfrom flask_sqlalchemy import SQLAlchemy
+from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 api = Api(app)
@@ -8,38 +9,34 @@ db = SQLAlchemy(app)
 
 class VideoModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(dbString(100), nullable=False) #nullable - it has to have some information
+    name = db.Column(db.String(100), nullable=False) #nullable - it has to have some information
     views = db.Column(db.Integer, nullable=False)
     likes = db.Column(db.Integer, nullable=False)
 
     def __repr__(self):
         return f"Video(name={name}, views={views}, likes={likes})"
-db.create_all()
+# db.create_all() #only once
 
 video_put_args = reqparse.RequestParser()
 video_put_args.add_argument("name", type=str, help="Name of the video", required=True)
 video_put_args.add_argument("views", type=int, help="Views of the video", required=True)
 video_put_args.add_argument("likes", type=int, help="Likes of the video", required=True)
 
-videos = {}
-
-def abort_if_video_id_doesnt_exist(video_id):
-    if video_id not in videos:
-        abort(404, message="Video could not be find...")
-
-def abort_if_video_exist(video_id):
-    if video_id in videos:
-        abort(409, message="Video already exists with that ID...")
+resource_fields = {
+    'id' : fields.Integer,
+    'name' : fields.String,
+    'views' : fields.Integer,
+    'likes' : fields.Integer
+}
 
 class Video(Resource):
+    @marshal_with(resource_fields)
     def get(self, video_id):
-        abort_if_video_id_doesnt_exist(video_id)
-        return videos[video_id]
+        result = VideoModel.query.get(id=video_id)
+        return result
 
     def put(self, video_id):
-        abort_if_video_exist(video_id)
-        args = video_put_args.parse_args()
-        videos[video_id] = args
+
         return videos[video_id], 201 # it has been created
 
     def delete(self, video_id):
